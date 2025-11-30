@@ -3,14 +3,6 @@
 An Android application that allows users to record their thoughts and track their moods using voice notes.
 Built with a modern **Offline-First** approach, ensuring data privacy and instant access without an internet connection.
 
----
-
-## 🖼 Screenshots
-*(Add screenshots here when your UI is ready – e.g., Home Screen, Recording Sheet, Mood Selector)*
-
-| Home Screen | Create Record | Mood Selection |
-|:-----------:|:-------------:|:--------------:|
-| <img src="" width="200" /> | <img src="" width="200" /> | <img src="" width="200" /> |
 
 ---
 
