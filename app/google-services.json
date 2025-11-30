@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "976294503133",
+    "project_id": "echojournal-42bfb",
+    "storage_bucket": "echojournal-42bfb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:976294503133:android:8c8ba430e58796701a7134",
+        "android_client_info": {
+          "package_name": "com.example.echojournal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiHKQ9ZEV5Ovlg6xdOUFXg-ed4OzPl3GE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
