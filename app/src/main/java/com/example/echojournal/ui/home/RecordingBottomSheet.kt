@@ -15,14 +15,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.echojournal.R
-import com.example.echojournal.data.model.JournalEntry // Required for mock addEntry
-import com.example.echojournal.data.model.JournalEntryDao // Required for mock DAO implementation
-import com.example.echojournal.data.repository.JournalRepository // Required for mock
-import kotlinx.coroutines.flow.flowOf // Required for mock flow
-import kotlinx.coroutines.flow.Flow // Required for the missing function's return type
+import com.example.echojournal.data.model.JournalEntry
+import com.example.echojournal.data.model.JournalEntryDao
+import com.example.echojournal.data.repository.JournalRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import java.io.File
 import java.util.concurrent.TimeUnit
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,9 +31,12 @@ fun RecordingBottomSheet(
     onSave: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val duration by viewModel.recordDuration
-    val isPaused = viewModel.isPaused.value
-    val isRecording = viewModel.isRecording.value
+
+    // --- COLLECT STATE FROM VIEWMODEL ---
+    val duration by viewModel.recordDuration.collectAsState()
+    val isPaused by viewModel.isPaused.collectAsState()
+    val isRecording by viewModel.isRecording.collectAsState()
+    // ------------------------------------
 
     // 🕒 format mm:ss
     val formattedTime = String.format(
@@ -177,7 +179,6 @@ fun RecordingBottomSheet(
                     IconButton(onClick = {
                         if (isPaused) {
                             // ✅ Save recording
-                            viewModel.isSaving.value = true
                             viewModel.stopRecording()
                             viewModel.recordedFilePath?.let { path ->
                                 onSave(path)
@@ -213,8 +214,6 @@ fun RecordingBottomSheetPreview() {
     val mockDao = object : JournalEntryDao {
         override fun getAllEntries() = flowOf<List<JournalEntry>>(emptyList())
 
-        // FIX: The anonymous object must implement the full abstract signature from the interface,
-        // including the parameters that have default values in the interface definition.
         override fun getFilteredEntries(
             moods: List<String>,
             tags: List<String>,
@@ -230,10 +229,10 @@ fun RecordingBottomSheetPreview() {
     val mockRepo = JournalRepository(mockDao)
 
     // 3. Instantiate the HomeViewModel using the mock repository
+    // Note: We cannot manually set the StateFlow values (isPaused, recordDuration)
+    // from outside the VM because they are now encapsulated as read-only StateFlows.
     val fakeViewModel = HomeViewModel(mockRepo).apply {
         isPreview = true
-        isPaused.value = false
-        recordDuration.value = 75 // 1:15
     }
 
     Surface(

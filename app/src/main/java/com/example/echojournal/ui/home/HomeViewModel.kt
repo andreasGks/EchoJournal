@@ -2,26 +2,23 @@ package com.example.echojournal.ui.home
 
 import android.media.MediaRecorder
 import android.os.Build
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.echojournal.data.model.JournalEntry
 import com.example.echojournal.data.repository.JournalRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine // NEW: Import combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.update
 
-// 1. CONSTRUCTOR INJECTION: The ViewModel now REQUIRES a Repository instance.
 open class HomeViewModel(private val repository: JournalRepository) : ViewModel() {
 
     // ----------------------------------------------------
@@ -33,9 +30,9 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
         viewModelScope.launch {
             _selectedMoods.update { current ->
                 if (current.contains(mood)) {
-                    current - mood // Remove mood
+                    current - mood
                 } else {
-                    current + mood // Add mood
+                    current + mood
                 }
             }
         }
@@ -48,46 +45,38 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
     }
 
     // ----------------------------------------------------
-    // NEW: Topic Filter State Management (RESOLVED: This was missing and caused Unresolved reference errors)
+    // TOPIC Filter State Management
     private val _selectedTopics = MutableStateFlow(emptySet<String>())
-
-    // NEW: Expose the selected topics
     val selectedTopics: StateFlow<Set<String>> = _selectedTopics.asStateFlow()
 
-    // NEW: Toggle Topic filter
     fun toggleTopicFilter(topic: String) {
         viewModelScope.launch {
             _selectedTopics.update { current ->
                 if (current.contains(topic)) {
-                    current - topic // Remove topic
+                    current - topic
                 } else {
-                    current + topic // Add topic
+                    current + topic
                 }
             }
         }
     }
 
-    // NEW: Function to clear all active topic filters
     fun clearTopicFilters() {
         viewModelScope.launch {
             _selectedTopics.update { emptySet() }
         }
     }
+
     // ----------------------------------------------------
-
-
-    // 2. FILTERED DATA FLOW: Combine the two filter states with the database query
+    // FILTERED DATA FLOW
     val journalEntries: StateFlow<List<JournalEntry>> =
-        // Combine both flows into a single flow of Pair<Set<String>, Set<String>>
         _selectedMoods.combine(_selectedTopics) { moods, topics ->
             Pair(moods, topics)
         }
-            // Use flatMapLatest to switch to the new database query flow whenever filters change
             .flatMapLatest { (moods, topics) ->
                 if (moods.isEmpty() && topics.isEmpty()) {
-                    repository.allEntries // Uses the original getAllEntries query
+                    repository.allEntries
                 } else {
-                    // Calls the repository method that accepts both moods and tags
                     repository.getFilteredEntries(moods.toList(), topics.toList())
                 }
             }
@@ -97,21 +86,33 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
                 initialValue = emptyList()
             )
 
-    // 3. DATA ACCESS: Refactor addEntry to call the Repository's insert method.
+    // ----------------------------------------------------
+    // DATA ACTIONS
     fun addEntry(entry: JournalEntry) {
         viewModelScope.launch {
             repository.insert(entry)
         }
     }
 
-    // --- (EXISTING RECORDING LOGIC BELOW REMAINS THE SAME) ---
+    // ----------------------------------------------------
+    // RECORDING LOGIC (Converted to StateFlow)
 
-    var isSaving = mutableStateOf(false)
-    var isRecording = mutableStateOf(false)
-    var isPaused = mutableStateOf(false)
+    // Using StateFlow instead of mutableStateOf
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    private val _isRecording = MutableStateFlow(false)
+    val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
+
+    private val _isPaused = MutableStateFlow(false)
+    val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
+
+    private val _recordDuration = MutableStateFlow(0)
+    val recordDuration: StateFlow<Int> = _recordDuration.asStateFlow()
+
+    // Non-UI state variables can remain standard vars
     var recordedFilePath: String? = null
-    var isPreview = false // skip logic during Compose preview
-    var recordDuration = mutableStateOf(0) // in seconds
+    var isPreview = false
 
     private var recorder: MediaRecorder? = null
     private var timerJob: Job? = null
@@ -133,9 +134,12 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
             }
 
             recordedFilePath = file.absolutePath
-            isRecording.value = true
-            isPaused.value = false
-            recordDuration.value = 0
+
+            // Update flows
+            _isRecording.value = true
+            _isPaused.value = false
+            _recordDuration.value = 0
+
             startTimer()
 
         } catch (e: Exception) {
@@ -150,10 +154,10 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            while (isRecording.value) {
+            while (_isRecording.value) {
                 delay(1000)
-                if (!isPaused.value) {
-                    recordDuration.value++
+                if (!_isPaused.value) {
+                    _recordDuration.update { it + 1 }
                 }
             }
         }
@@ -164,10 +168,10 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
      */
     fun pauseRecording() {
         try {
-            if (isRecording.value && !isPaused.value) {
+            if (_isRecording.value && !_isPaused.value) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     recorder?.pause()
-                    isPaused.value = true
+                    _isPaused.value = true
                 }
             }
         } catch (e: Exception) {
@@ -180,11 +184,13 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
      */
     fun resumeRecording() {
         try {
-            if (isPaused.value) {
+            if (_isPaused.value) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     recorder?.resume()
-                    isPaused.value = false
-                    startTimer()
+                    _isPaused.value = false
+                    // No need to restart timer job explicitly if the while loop is still running,
+                    // but usually, it's safer to ensure logic continues.
+                    // Based on previous logic, the while loop checks !isPaused.
                 }
             }
         } catch (e: Exception) {
@@ -197,7 +203,7 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
      */
     fun stopRecording() {
         try {
-            if (isRecording.value) {
+            if (_isRecording.value) {
                 recorder?.apply {
                     try {
                         stop()
@@ -213,8 +219,9 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
         } finally {
             recorder?.release()
             recorder = null
-            isRecording.value = false
-            isPaused.value = false
+
+            _isRecording.value = false
+            _isPaused.value = false
             timerJob?.cancel()
         }
     }
@@ -223,10 +230,10 @@ open class HomeViewModel(private val repository: JournalRepository) : ViewModel(
      * Reset all states after a recording ends or is cancelled.
      */
     fun resetState() {
-        isSaving.value = false
-        isRecording.value = false
-        isPaused.value = false
-        recordDuration.value = 0
+        _isSaving.value = false
+        _isRecording.value = false
+        _isPaused.value = false
+        _recordDuration.value = 0
         timerJob?.cancel()
     }
 
