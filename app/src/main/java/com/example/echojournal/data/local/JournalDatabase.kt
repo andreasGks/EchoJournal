@@ -1,17 +1,16 @@
-package com.example.echojournal.data
+package com.example.echojournal.data.local
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.echojournal.data.model.DateConverter
-import com.example.echojournal.data.model.JournalEntry
-import com.example.echojournal.data.model.JournalEntryDao
-import com.example.echojournal.data.model.ListConverter
+import com.example.echojournal.data.local.dao.JournalEntryDao
+import com.example.echojournal.data.local.entity.JournalEntry
 
-@Database(entities = [JournalEntry::class], version = 1, exportSchema = false)
-@TypeConverters(DateConverter::class, ListConverter::class) // Use both converters
+// FIX: Incremented version to 2 to trigger the schema update
+@Database(entities = [JournalEntry::class], version = 2, exportSchema = false)
+@TypeConverters(com.example.echojournal.data.local.TypeConverters::class)
 abstract class JournalDatabase : RoomDatabase() {
 
     abstract fun journalEntryDao(): JournalEntryDao
@@ -26,7 +25,9 @@ abstract class JournalDatabase : RoomDatabase() {
                     context.applicationContext,
                     JournalDatabase::class.java,
                     "journal_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration() // Wipes old data on version change
+                    .build()
                 INSTANCE = instance
                 instance
             }

@@ -1,4 +1,4 @@
-package com.example.echojournal.ui.navigation
+package com.example.echojournal.presentation.navigation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -9,30 +9,32 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.echojournal.ui.home.CreateRecordScreen
-import com.example.echojournal.ui.home.HomeScreen
-import com.example.echojournal.ui.home.HomeViewModel
+import com.example.echojournal.presentation.record.CreateRecordScreen
+// FIX 1: Import HistoryScreen instead of HomeScreen
+import com.example.echojournal.presentation.history.HistoryScreen
+import com.example.echojournal.presentation.history.HistoryViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    homeViewModel: HomeViewModel = viewModel() // This is the single, shared instance
+    homeViewModel: HistoryViewModel = viewModel() // This is the single, shared instance
 ) {
     NavHost(
         navController = navController,
         startDestination = Screen.JournalHistory.route
     ) {
 
-        // Home / Journal History Screen (Correctly passed)
+        // Home / Journal History Screen
         composable(Screen.JournalHistory.route) {
-            HomeScreen(
+            // FIX 2: Call HistoryScreen instead of HomeScreen
+            HistoryScreen(
                 navController = navController,
                 viewModel = homeViewModel
             )
         }
 
-        // Create Record Screen με audioFilePath argument
+        // Create Record Screen with audioFilePath argument
         composable(
             route = "create_record/{audioFilePath}",
             arguments = listOf(navArgument("audioFilePath") { type = NavType.StringType })
@@ -41,7 +43,7 @@ fun NavGraph(
             CreateRecordScreen(
                 navController = navController,
                 audioFilePath = audioPath,
-                viewModel = homeViewModel // FIX: Pass the shared ViewModel explicitly
+                viewModel = homeViewModel
             )
         }
     }

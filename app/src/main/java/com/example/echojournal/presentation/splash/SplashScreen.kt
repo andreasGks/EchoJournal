@@ -1,4 +1,4 @@
-package com.example.echojournal.ui.splash
+package com.example.echojournal.presentation.splash
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,7 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.echojournal.R
-import com.example.echojournal.ui.theme.SplashBackground
+import com.example.echojournal.core.designsystem.SplashBackground
 
 @Composable
 fun SplashScreen(

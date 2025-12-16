@@ -1,4 +1,4 @@
-package com.example.echojournal.ui.splash
+package com.example.echojournal.presentation.splash
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

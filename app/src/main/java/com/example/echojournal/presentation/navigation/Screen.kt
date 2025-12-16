@@ -1,4 +1,4 @@
-package com.example.echojournal.ui.navigation
+package com.example.echojournal.presentation.navigation
 
 import java.net.URLEncoder // <-- You need this import!
 import java.nio.charset.StandardCharsets // <-- Recommended for encoding

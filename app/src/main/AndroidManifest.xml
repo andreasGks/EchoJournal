@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -20,9 +19,8 @@
         android:theme="@style/Theme.EchoJournal.NoActionBar"
         tools:targetApi="31">
 
-        <!-- Main launcher activity for Jetpack Compose -->
         <activity
-            android:name=".MainActivity"
+            android:name=".presentation.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.EchoJournal.NoActionBar">
             <intent-filter>
@@ -31,7 +29,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Firebase configuration -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />
