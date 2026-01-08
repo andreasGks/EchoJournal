@@ -9,41 +9,61 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.echojournal.presentation.record.CreateRecordScreen
-// FIX 1: Import HistoryScreen instead of HomeScreen
 import com.example.echojournal.presentation.history.HistoryScreen
 import com.example.echojournal.presentation.history.HistoryViewModel
+import com.example.echojournal.presentation.record.JournalEntryScreen
+// FIX: This import will work once we create the file in the next step
+import com.example.echojournal.presentation.settings.SettingsScreen
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    homeViewModel: HistoryViewModel = viewModel() // This is the single, shared instance
+    homeViewModel: HistoryViewModel = viewModel()
 ) {
     NavHost(
         navController = navController,
         startDestination = Screen.JournalHistory.route
     ) {
 
-        // Home / Journal History Screen
+        // 1. Home / History
         composable(Screen.JournalHistory.route) {
-            // FIX 2: Call HistoryScreen instead of HomeScreen
             HistoryScreen(
                 navController = navController,
                 viewModel = homeViewModel
             )
         }
 
-        // Create Record Screen with audioFilePath argument
+        // 2. Journal Entry Screen
         composable(
-            route = "create_record/{audioFilePath}",
-            arguments = listOf(navArgument("audioFilePath") { type = NavType.StringType })
+            route = Screen.JournalEntry.route, // Best practice: use the constant from Screen class
+            arguments = listOf(
+                navArgument("audioPath") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("entryId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
-            val audioPath = backStackEntry.arguments?.getString("audioFilePath") ?: ""
-            CreateRecordScreen(
+            val audioPath = backStackEntry.arguments?.getString("audioPath")
+            val entryId = backStackEntry.arguments?.getString("entryId")
+
+            JournalEntryScreen(
                 navController = navController,
                 audioFilePath = audioPath,
-                viewModel = homeViewModel
+                entryId = entryId
+            )
+        }
+
+        // 3. Settings Screen (NEW)
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                navController = navController
             )
         }
     }

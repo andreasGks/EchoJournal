@@ -1,6 +1,8 @@
 package com.example.echojournal.presentation.history
 
 import android.media.MediaPlayer
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -23,60 +25,61 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.example.echojournal.R
-import com.example.echojournal.data.local.dao.JournalEntryDao
 import com.example.echojournal.data.local.entity.JournalEntry
-import com.example.echojournal.data.repository.JournalRepository
 import com.example.echojournal.domain.model.Mood
 import com.example.echojournal.presentation.navigation.Screen
 import com.example.echojournal.presentation.record.RecordingBottomSheet
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Date
 
-// --- DATA CONSTANTS ---
-val allAvailableTopics = listOf("Work", "Family", "Health", "Study", "Travel", "Random")
-
+@RequiresApi(Build.VERSION_CODES.O) // Required for LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     navController: NavHostController,
-    viewModel: HistoryViewModel = viewModel()
+    viewModel: HistoryViewModel = viewModel(),
+    fromWidget: Boolean = false
 ) {
     // --- STATE MANAGEMENT ---
     var showRecordingSheet by remember { mutableStateOf(false) }
     var showMoodFilterSheet by remember { mutableStateOf(false) }
     var showTopicFilterSheet by remember { mutableStateOf(false) }
 
+    // Auto-open recording if from widget
+    LaunchedEffect(fromWidget) {
+        if (fromWidget) {
+            showRecordingSheet = true
+        }
+    }
+
     // Collect Data from ViewModel
     val currentMoods by viewModel.selectedMoods.collectAsState()
     val currentTopics by viewModel.selectedTopics.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val entries: List<JournalEntry> by viewModel.journalEntries.collectAsState()
+
     val showEmptyState = entries.isEmpty()
 
     // Scaffold State for Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Main Scaffold-like structure using Box
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF2F2F7)) // Light Gray Background
+            .background(Color(0xFFF2F2F7))
     ) {
 
-        // Content Column: Splits screen into [Header] and [List Area]
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             // ==========================================
             // HEADER
             // ==========================================
@@ -100,7 +103,7 @@ fun HistoryScreen(
                         fontWeight = FontWeight.Bold
                     )
 
-                    IconButton(onClick = { /* Handle Settings */ }) {
+                    IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_settings),
                             contentDescription = "Settings",
@@ -110,9 +113,17 @@ fun HistoryScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Search Bar
+                EchoJournalSearchBar(
+                    query = searchQuery,
+                    onQueryChange = viewModel::onSearchQueryChange
+                )
+
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Row 2: Filter Buttons (Chips)
+                // Row 2: Filter Buttons
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -139,7 +150,7 @@ fun HistoryScreen(
                     .fillMaxWidth()
             ) {
                 if (showEmptyState) {
-                    // Empty State Centered
+                    // Empty State
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.align(Alignment.Center)
@@ -150,8 +161,11 @@ fun HistoryScreen(
                             modifier = Modifier.size(150.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+
+                        val emptyText = if (searchQuery.isNotBlank()) "No matches found" else "No Entries"
+
                         Text(
-                            text = "No Entries.",
+                            text = emptyText,
                             color = Color.Black,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
@@ -164,32 +178,21 @@ fun HistoryScreen(
                         )
                     }
                 } else {
-                    // Scrollable List with Timeline Look
+                    // List
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        item {
-                            Text(
-                                text = "TODAY",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-                            )
-                        }
-                        // Use SwipeableJournalEntryItem for delete functionality
-                        // KEY is important here to prevent state bugs when items move/add
+                        // Removed the hardcoded "TODAY" header to avoid confusion.
+                        // You can add logic here to group items by date headers if you wish in V2.
+
                         items(entries, key = { entry -> entry.id }) { entry ->
                             SwipeableJournalEntryItem(
                                 entry = entry,
                                 onDismiss = { deletedEntry ->
-                                    // Show Snackbar with Undo option
                                     scope.launch {
-                                        // 1. Delete temporarily
                                         viewModel.deleteJournalEntry(deletedEntry.id)
-
                                         val result = snackbarHostState.showSnackbar(
                                             message = "Entry deleted",
                                             actionLabel = "Undo",
@@ -197,10 +200,12 @@ fun HistoryScreen(
                                             duration = SnackbarDuration.Short
                                         )
                                         if (result == SnackbarResult.ActionPerformed) {
-                                            // Restore if UNDO is pressed
                                             viewModel.addEntry(deletedEntry)
                                         }
                                     }
+                                },
+                                onClick = { clickedEntry ->
+                                    navController.navigate(Screen.JournalEntry.edit(clickedEntry.id))
                                 }
                             )
                         }
@@ -210,7 +215,7 @@ fun HistoryScreen(
         }
 
         // ==========================================
-        // FLOATING ACTION BUTTON
+        // FAB
         // ==========================================
         Box(
             modifier = Modifier
@@ -235,9 +240,6 @@ fun HistoryScreen(
             )
         }
 
-        // ==========================================
-        // SNACKBAR HOST (For Undo)
-        // ==========================================
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
@@ -250,7 +252,7 @@ fun HistoryScreen(
                 onClose = { showRecordingSheet = false },
                 onSave = { audioFilePath ->
                     showRecordingSheet = false
-                    navController.navigate(Screen.CreateRecord.passPath(audioFilePath))
+                    navController.navigate(Screen.JournalEntry.create(audioFilePath))
                 },
                 isPreview = false
             )
@@ -272,16 +274,64 @@ fun HistoryScreen(
     }
 }
 
-// --- NEW COMPONENT: SWIPEABLE ITEM WRAPPER ---
+// --- NEW COMPONENT: SEARCH BAR ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EchoJournalSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text("Search your entries...", color = Color.Gray) },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_search),
+                contentDescription = "Search",
+                tint = Color.Gray,
+                modifier = Modifier.size(20.dp)
+            )
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_close),
+                    contentDescription = "Clear",
+                    tint = Color.Gray,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onQueryChange("") }
+                )
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .background(Color(0xFFF2F2F7), RoundedCornerShape(12.dp)),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            cursorColor = Color(0xFF007BFF)
+        ),
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+// --- SWIPEABLE ITEM ---
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeableJournalEntryItem(
     entry: JournalEntry,
-    onDismiss: (JournalEntry) -> Unit
+    onDismiss: (JournalEntry) -> Unit,
+    onClick: (JournalEntry) -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
-            // FIX: Allow both directions (Left to Right OR Right to Left)
             if (dismissValue == SwipeToDismissBoxValue.EndToStart ||
                 dismissValue == SwipeToDismissBoxValue.StartToEnd) {
                 onDismiss(entry)
@@ -290,40 +340,32 @@ fun SwipeableJournalEntryItem(
                 false
             }
         },
-        positionalThreshold = { it * 0.35f } // 35% swipe required
+        positionalThreshold = { it * 0.35f }
     )
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = true, // Allow Left Swipe
-        enableDismissFromEndToStart = true, // Allow Right Swipe
-        backgroundContent = {
-            DismissBackground(dismissState)
-        }
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = { DismissBackground(dismissState) }
     ) {
-        TimelineJournalEntryItem(entry = entry)
+        TimelineJournalEntryItem(entry = entry, onClick = onClick)
     }
 }
 
-// --- NEW COMPONENT: SWIPE BACKGROUND ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DismissBackground(dismissState: SwipeToDismissBoxState) {
-    // Standard "Destructive" Red (Used in modern iOS/Android apps)
     val deleteColor = Color(0xFFFF3B30)
-
-    // FIX: Only show color when NOT Settled (Idle).
-    // This prevents the red background from showing up on new items.
     val color = when (dismissState.targetValue) {
         SwipeToDismissBoxValue.Settled -> Color.Transparent
         else -> deleteColor
     }
 
-    // Logic to switch icon side based on swipe direction
     val alignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
-        Alignment.CenterStart // Swiping Right -> Icon on Left
+        Alignment.CenterStart
     } else {
-        Alignment.CenterEnd   // Swiping Left -> Icon on Right
+        Alignment.CenterEnd
     }
 
     val iconScale by animateFloatAsState(
@@ -338,38 +380,36 @@ fun DismissBackground(dismissState: SwipeToDismissBoxState) {
             .padding(horizontal = 30.dp),
         contentAlignment = alignment
     ) {
-        // Only show the trash icon if the user is actively swiping
         if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_close), // Ideally replace with ic_delete if you have it
+                painter = painterResource(id = R.drawable.ic_close),
                 contentDescription = "Delete",
                 tint = Color.White,
-                modifier = Modifier
-                    .size(28.dp)
-                    .scale(iconScale)
+                modifier = Modifier.size(28.dp).scale(iconScale)
             )
         }
     }
 }
 
-
-// --- EXISTING COMPONENT: TIMELINE ITEM ---
+// --- TIMELINE ITEM ---
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun TimelineJournalEntryItem(entry: JournalEntry) {
+fun TimelineJournalEntryItem(
+    entry: JournalEntry,
+    onClick: (JournalEntry) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF2F2F7)) // IMPORTANT: Matches screen bg so swipe reveals color underneath
+            .background(Color(0xFFF2F2F7))
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // 1. Mood Icon Column (Outside Card)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(top = 16.dp)
         ) {
             val moodResId = entry.mood.iconRes
-
             Image(
                 painter = painterResource(id = moodResId),
                 contentDescription = "Mood: ${entry.mood.name}",
@@ -378,20 +418,23 @@ fun TimelineJournalEntryItem(entry: JournalEntry) {
                     .background(Color.White, CircleShape)
             )
         }
-
         Spacer(modifier = Modifier.width(12.dp))
-
-        // 2. The Content Card
-        JournalEntryCard(entry = entry)
+        JournalEntryCard(entry = entry, onClick = { onClick(entry) })
     }
 }
 
 // --- CARD COMPONENT ---
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun JournalEntryCard(entry: JournalEntry) {
+fun JournalEntryCard(
+    entry: JournalEntry,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -409,19 +452,16 @@ fun JournalEntryCard(entry: JournalEntry) {
                     color = Color.Black
                 )
 
+                // UPDATED: Using the real date function
                 Text(
-                    text = "Today", // Placeholder
+                    text = getRelativeDate(entry.timestamp),
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
             }
-
             Spacer(Modifier.height(12.dp))
-
             PlaybackBarForEntry(entry.audioFilePath)
-
             Spacer(Modifier.height(12.dp))
-
             if (entry.description.isNotBlank()) {
                 Text(
                     text = entry.description.take(100) + if (entry.description.length > 100) "... Show more" else "",
@@ -430,7 +470,6 @@ fun JournalEntryCard(entry: JournalEntry) {
                     lineHeight = 22.sp
                 )
             }
-
             if (entry.topics.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 FlowRow(
@@ -523,9 +562,7 @@ fun PlaybackBarForEntry(audioFilePath: String) {
                 modifier = Modifier.size(16.dp)
             )
         }
-
         Spacer(Modifier.width(12.dp))
-
         LinearProgressIndicator(
             progress = if (totalDuration == 0 || mediaPlayer == null) 0f else currentTime / totalDuration.toFloat(),
             modifier = Modifier
@@ -535,9 +572,7 @@ fun PlaybackBarForEntry(audioFilePath: String) {
             color = Color(0xFF007BFF),
             trackColor = Color(0xFFCDE0FF)
         )
-
         Spacer(Modifier.width(12.dp))
-
         Text(
             text = if (mediaPlayer == null) "Error" else "${formatTime(currentTime)}/${formatTime(totalDuration)}",
             fontSize = 12.sp,
@@ -548,6 +583,9 @@ fun PlaybackBarForEntry(audioFilePath: String) {
     }
 }
 
+// ----------------------------------------------------
+// HELPER FUNCTIONS
+// ----------------------------------------------------
 fun formatTime(ms: Int): String {
     val totalSec = ms / 1000
     val min = totalSec / 60
@@ -555,7 +593,20 @@ fun formatTime(ms: Int): String {
     return "%02d:%02d".format(min, sec)
 }
 
-// --- FILTER BUTTONS & SHEETS ---
+// NEW: Date Formatter Logic
+@RequiresApi(Build.VERSION_CODES.O)
+fun getRelativeDate(date: Date): String {
+    val now = LocalDate.now()
+    val entryDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+
+    return when {
+        entryDate.isEqual(now) -> "Today"
+        entryDate.isEqual(now.minusDays(1)) -> "Yesterday"
+        else -> entryDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))
+    }
+}
+
+// --- FILTER BUTTONS & SHEETS (Keep unchanged) ---
 
 @Composable
 fun MoodFilterButton(
@@ -661,7 +712,7 @@ fun TopicFilterButton(
 @Composable
 fun MoodFilterSheet(viewModel: HistoryViewModel, onClose: () -> Unit) {
     val selectedMoods by viewModel.selectedMoods.collectAsState()
-    val allMoods = Mood.entries // Use Enum entries
+    val allMoods = Mood.entries
 
     ModalBottomSheet(onDismissRequest = onClose, containerColor = Color.White) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -699,11 +750,21 @@ fun MoodFilterSheet(viewModel: HistoryViewModel, onClose: () -> Unit) {
 @Composable
 fun TopicFilterSheet(viewModel: HistoryViewModel, onClose: () -> Unit) {
     val selectedTopics by viewModel.selectedTopics.collectAsState()
+    val allAvailableTopics by viewModel.availableTopics.collectAsState()
 
     ModalBottomSheet(onDismissRequest = onClose, containerColor = Color.White) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text("Filter by Topics", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Spacer(Modifier.height(16.dp))
+
+            if (allAvailableTopics.isEmpty()) {
+                Text(
+                    "No topics created yet.",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
+
             allAvailableTopics.forEach { topic ->
                 val isSelected = selectedTopics.contains(topic)
                 Row(
@@ -722,28 +783,4 @@ fun TopicFilterSheet(viewModel: HistoryViewModel, onClose: () -> Unit) {
             Spacer(Modifier.height(32.dp))
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HistoryScreenPreview() {
-    val mockDao = object : JournalEntryDao {
-        override fun getAllEntries() = flowOf(emptyList<JournalEntry>())
-        override fun getFilteredEntries(moods: List<Mood>, topicsQuery: String?, moodsIsEmpty: Boolean) = flowOf(
-            listOf(
-                JournalEntry(
-                    title = "Preview Entry",
-                    description = "Description",
-                    audioFilePath = "",
-                    mood = Mood.Peaceful,
-                    topics = listOf("Work")
-                )
-            )
-        )
-        override suspend fun insertEntry(entry: JournalEntry) {}
-        override suspend fun deleteEntryById(entryId: String) {}
-    }
-    val mockRepo = JournalRepository(mockDao)
-    val mockViewModel = HistoryViewModel(mockRepo)
-    HistoryScreen(rememberNavController(), mockViewModel)
 }

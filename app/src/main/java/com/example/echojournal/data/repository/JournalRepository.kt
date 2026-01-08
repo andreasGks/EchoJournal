@@ -10,33 +10,43 @@ class JournalRepository(private val dao: JournalEntryDao) {
     // 1. Get all entries
     val allEntries: Flow<List<JournalEntry>> = dao.getAllEntries()
 
-    /**
-     * Filters entries by Mood and Topic.
-     * Logic:
-     * - We convert the String mood names (from UI) -> Mood Enums (for DB).
-     * - We take the first topic selected to filter by (simple search).
-     */
-    fun getFilteredEntries(moodNames: List<String>, topics: List<String>): Flow<List<JournalEntry>> {
-        // Convert UI Strings ("Stressed") back to Domain Enums (Mood.Stressed)
+    // 2. Get Entry by ID
+    fun getEntryById(entryId: String): Flow<JournalEntry?> {
+        return dao.getEntryById(entryId)
+    }
+
+    // 3. Filter Logic (Updated with Search)
+    fun getFilteredEntries(
+        moodNames: List<String>,
+        topics: List<String>,
+        searchQuery: String? = null // NEW PARAMETER
+    ): Flow<List<JournalEntry>> {
         val moodEnums = moodNames.map { Mood.fromName(it) }
 
-        // Logic: If topics are empty, pass null so the DAO ignores the filter.
-        // If there are topics, we just pick the first one for the search query
-        // (Room LIKE query usually handles one string pattern at a time cleanly)
+        // Pick the first topic if available (Room LIKE limitation simplification)
         val topicsQuery = if (topics.isNotEmpty()) topics[0] else null
+
+        // Clean search query: if blank, pass null
+        val cleanSearchQuery = if (searchQuery.isNullOrBlank()) null else searchQuery
 
         return dao.getFilteredEntries(
             moods = moodEnums,
-            topicsQuery = topicsQuery
+            topicsQuery = topicsQuery,
+            searchQuery = cleanSearchQuery
         )
     }
 
-    // 2. Insert
+    // 4. Insert
     suspend fun insert(entry: JournalEntry) {
         dao.insertEntry(entry)
     }
 
-    // 3. Delete
+    // 5. Update
+    suspend fun update(entry: JournalEntry) {
+        dao.updateEntry(entry)
+    }
+
+    // 6. Delete
     suspend fun deleteEntry(entryId: String) {
         dao.deleteEntryById(entryId)
     }

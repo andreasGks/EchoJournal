@@ -11,17 +11,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.echojournal.R
-import com.example.echojournal.data.local.dao.JournalEntryDao
-import com.example.echojournal.data.local.entity.JournalEntry
-import com.example.echojournal.data.repository.JournalRepository
-import com.example.echojournal.domain.model.Mood
 import com.example.echojournal.presentation.history.HistoryViewModel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -140,7 +133,7 @@ fun RecordingBottomSheet(
                     }
                 }
 
-                // Center button (Mic / Resume / Check logic can vary)
+                // Center button (Mic / Resume)
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -155,17 +148,12 @@ fun RecordingBottomSheet(
                         },
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // While recording, show Check (to save) or Mic (visual)
-                        // This logic depends on UX preferences. Usually Center = Action.
-                        // Let's use Mic while recording, Check when Paused to complete?
-                        // Based on typical assignment: Center button often toggles recording.
                         Icon(
                             painter = painterResource(
-                                // If running: Mic icon (or Pause icon). If Paused: Mic to resume.
-                                id = if (isPaused) R.drawable.ic_mic else R.drawable.ic_mic
+                                id = R.drawable.ic_mic // Kept simple as per your request
                             ),
                             contentDescription = "Toggle Recording",
-                            tint = Color.White, // Contrast on Blue
+                            tint = Color.White,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(18.dp)
@@ -198,7 +186,7 @@ fun RecordingBottomSheet(
                                 id = if (isPaused) R.drawable.ic_check else R.drawable.ic_pause
                             ),
                             contentDescription = "Pause/Save",
-                            tint = Color(0xFF007BFF), // Blue tint on light background
+                            tint = Color(0xFF007BFF),
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -206,48 +194,6 @@ fun RecordingBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
-}
-
-// ---------------------------------------------------------
-// PREVIEW HELPERS
-// ---------------------------------------------------------
-
-@Preview(showBackground = true, backgroundColor = 0xFFEFEFEF)
-@Composable
-fun RecordingBottomSheetPreview() {
-
-    // 1. Define a Mock DAO with CORRECT signature
-    val mockDao = object : JournalEntryDao {
-        override fun getAllEntries() = flowOf<List<JournalEntry>>(emptyList())
-
-        // FIX: Signature matches the updated DAO (List<Mood>, String?, Boolean)
-        override fun getFilteredEntries(
-            moods: List<Mood>,
-            topicsQuery: String?,
-            moodsIsEmpty: Boolean
-        ): Flow<List<JournalEntry>> = flowOf(emptyList())
-
-        override suspend fun insertEntry(entry: JournalEntry) {}
-
-        override suspend fun deleteEntryById(entryId: String) {}
-    }
-
-    val mockRepo = JournalRepository(mockDao)
-    val fakeViewModel = HistoryViewModel(mockRepo)
-
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            RecordingBottomSheet(
-                viewModel = fakeViewModel,
-                onClose = {},
-                onSave = {},
-                isPreview = true // Prevents actual recording logic in Preview
-            )
         }
     }
 }

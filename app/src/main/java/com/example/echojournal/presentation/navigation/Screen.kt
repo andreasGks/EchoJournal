@@ -1,16 +1,31 @@
 package com.example.echojournal.presentation.navigation
 
-import java.net.URLEncoder // <-- You need this import!
-import java.nio.charset.StandardCharsets // <-- Recommended for encoding
+import android.net.Uri
 
 sealed class Screen(val route: String) {
-    object JournalHistory : Screen("journal_history")
-    object CreateRecord : Screen("create_record") {
-        // FIX: URL-encode the path before appending it to the route
-        fun passPath(path: String): String {
-            // URLEncoder.encode safely prepares the path for the navigation URL
-            val encodedPath = URLEncoder.encode(path, StandardCharsets.UTF_8.toString())
-            return "create_record/$encodedPath"
+
+    // 1. Home / History Screen
+    data object JournalHistory : Screen("journal_history")
+
+    // 2. Entry Screen (Handles both Creating and Editing)
+    data object JournalEntry : Screen("journal_entry?audioPath={audioPath}&entryId={entryId}") {
+
+        /**
+         * Use this when creating a NEW entry from a recording.
+         */
+        fun create(audioPath: String): String {
+            val encodedPath = Uri.encode(audioPath)
+            return "journal_entry?audioPath=$encodedPath"
+        }
+
+        /**
+         * Use this when EDITING an existing entry.
+         */
+        fun edit(entryId: String): String {
+            return "journal_entry?entryId=$entryId"
         }
     }
+
+    // 3. Settings Screen (NEW)
+    data object Settings : Screen("settings")
 }
