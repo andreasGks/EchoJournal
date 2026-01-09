@@ -8,13 +8,15 @@ import androidx.room.TypeConverters
 import com.example.echojournal.data.local.dao.JournalEntryDao
 import com.example.echojournal.data.local.entity.JournalEntry
 
-// FIX: Incremented version to 2 to trigger the schema update
-@Database(entities = [JournalEntry::class], version = 2, exportSchema = false)
+// ⚡ FIX: Version updated to 3 to force a clean rebuild of the database
+@Database(entities = [JournalEntry::class], version = 3, exportSchema = false)
 @TypeConverters(com.example.echojournal.data.local.TypeConverters::class)
 abstract class JournalDatabase : RoomDatabase() {
 
     abstract fun journalEntryDao(): JournalEntryDao
 
+    // NOTE: This companion object is mostly ignored because we use Hilt (AppModule),
+    // but we keep it updated just in case.
     companion object {
         @Volatile
         private var INSTANCE: JournalDatabase? = null
@@ -26,7 +28,7 @@ abstract class JournalDatabase : RoomDatabase() {
                     JournalDatabase::class.java,
                     "journal_database"
                 )
-                    .fallbackToDestructiveMigration() // Wipes old data on version change
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

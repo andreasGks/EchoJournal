@@ -114,4 +114,53 @@ class HistoryViewModelTest {
             searchQuery = ""
         )
     }
+
+
+    // --- NEW TESTS FOR V1.0 FEATURES ---
+
+    @Test
+    fun onSearchQueryChange_updatesValue_and_triggersSearch() = runTest {
+        // 1. Simulate typing "Gym"
+        viewModel.onSearchQueryChange("Gym")
+
+        // 2. Check if state updated locally
+        assertEquals("Gym", viewModel.searchQuery.value)
+
+        // 3. Let coroutines finish
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // 4. Verify Repository was called with the search query
+        // Note: We use org.mockito.kotlin.any() for lists because we don't care about filters here
+        verify(mockRepository).getFilteredEntries(
+            moodNames = org.mockito.kotlin.any(),
+            topics = org.mockito.kotlin.any(),
+            searchQuery = org.mockito.kotlin.eq("Gym") // Checking specifically for this
+        )
+    }
+
+    @Test
+    fun deleteJournalEntry_callsRepositoryDelete() = runTest {
+        // 1. Call delete
+        val entryIdToDelete = "1"
+        viewModel.deleteJournalEntry(entryIdToDelete)
+
+        // 2. WAIT for the coroutine to finish (Missing Step)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // 3. Verify repository delete function was triggered
+        verify(mockRepository).deleteEntry(entryIdToDelete)
+    }
+
+    @Test
+    fun toggleTopicFilter_addsAndRemovesTopic() = runTest {
+        // 1. Select "Work"
+        viewModel.toggleTopicFilter("Work")
+        assertEquals(setOf("Work"), viewModel.selectedTopics.value)
+
+        // 2. Select "Work" again (should remove it)
+        viewModel.toggleTopicFilter("Work")
+        assertEquals(emptySet<String>(), viewModel.selectedTopics.value)
+    }
+
+
 }

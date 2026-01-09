@@ -16,7 +16,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-// NEW: Define the DataStore extension property
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 @Module
@@ -32,7 +31,7 @@ object AppModule {
             JournalDatabase::class.java,
             "journal_database"
         )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration() // ⚡ CRITICAL: Wipes old data if version changes
             .build()
     }
 
@@ -50,7 +49,7 @@ object AppModule {
         return JournalRepository(dao)
     }
 
-    // 4. Provide DataStore (NEW) 💾
+    // 4. Provide DataStore
     @Provides
     @Singleton
     fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {

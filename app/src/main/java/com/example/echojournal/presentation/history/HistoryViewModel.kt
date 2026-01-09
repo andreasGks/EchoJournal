@@ -9,6 +9,7 @@ import com.example.echojournal.data.repository.JournalRepository
 import com.example.echojournal.data.repository.SettingsRepository
 import com.example.echojournal.domain.model.Mood
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -37,19 +38,19 @@ class HistoryViewModel @Inject constructor(
     // ----------------------------------------------------
     // DYNAMIC TAGS LIST (History + Settings) 🌟
     // ----------------------------------------------------
-    // Combines tags from History + Settings, sorts them Alphabetically
     val availableTopics: StateFlow<List<String>> = combine(
         repository.allEntries.map { list -> list.flatMap { it.topics }.toSet() },
         settingsRepository.availableTopics
     ) { historyTags, settingsTags ->
         (historyTags + settingsTags).sorted()
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
+    }
+        .flowOn(Dispatchers.Default) // ⚡ OPTIMIZATION: Sort list on CPU thread, not UI
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
-    // NEW: Delete a tag permanently from suggestions
     fun deleteTagFromSettings(tag: String) {
         viewModelScope.launch {
             settingsRepository.removeAvailableTopic(tag)
@@ -107,21 +108,17 @@ class HistoryViewModel @Inject constructor(
             }
         }.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.WhileSubscribed(5000), // Perfect memory optimization
             initialValue = emptyList()
         )
 
     // ----------------------------------------------------
     // DATA ACTIONS (CRUD)
     // ----------------------------------------------------
-
-    // Helper to save new tags to permanent settings
     private suspend fun saveNewTagsToSettings(entryTopics: List<String>) {
         if (entryTopics.isEmpty()) return
-
         val currentSettingsTags = settingsRepository.availableTopics.first()
         val updatedTags = currentSettingsTags + entryTopics
-
         if (updatedTags.size > currentSettingsTags.size) {
             settingsRepository.saveAvailableTopics(updatedTags)
         }
