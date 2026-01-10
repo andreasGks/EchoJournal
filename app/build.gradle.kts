@@ -17,8 +17,8 @@ android {
         targetSdk = 35
 
         // ✅ ΑΛΛΑΓΗ: Ανεβάσαμε τον κωδικό έκδοσης για να το δεχτεί το Play Console
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
