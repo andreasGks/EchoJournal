@@ -8,15 +8,20 @@ plugins {
 }
 
 android {
-    namespace = "com.example.echojournal"
+    // 🛑 ΑΛΛΑΓΗ: Νέο μοναδικό namespace
+    namespace = "com.andreasgks.echojournal"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.echojournal"
+        // 🛑 ΑΛΛΑΓΗ: Νέο Application ID (για να το δεχτεί η Google)
+        applicationId = "com.andreasgks.echojournal"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+
+        // 🔄 RESET: Ξεκινάμε από την αρχή
+        versionCode = 1
+        versionName = "1.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -61,7 +66,7 @@ kapt {
 dependencies {
     implementation(libs.androidx.foundation.android)
 
-    // NEW: Splash Screen API 🚀 (Fixes your missing symbol error)
+    // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     // Compose BOM
