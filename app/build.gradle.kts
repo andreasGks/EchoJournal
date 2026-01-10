@@ -8,19 +8,17 @@ plugins {
 }
 
 android {
-    // 🛑 ΑΛΛΑΓΗ: Νέο μοναδικό namespace
     namespace = "com.andreasgks.echojournal"
     compileSdk = 35
 
     defaultConfig {
-        // 🛑 ΑΛΛΑΓΗ: Νέο Application ID (για να το δεχτεί η Google)
         applicationId = "com.andreasgks.echojournal"
         minSdk = 24
         targetSdk = 35
 
-        // 🔄 RESET: Ξεκινάμε από την αρχή
-        versionCode = 1
-        versionName = "1.0"
+        // ✅ ΑΛΛΑΓΗ: Ανεβάσαμε τον κωδικό έκδοσης για να το δεχτεί το Play Console
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
