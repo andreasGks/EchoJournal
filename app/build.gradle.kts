@@ -15,8 +15,8 @@ android {
         applicationId = "com.example.echojournal"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -60,6 +60,10 @@ kapt {
 
 dependencies {
     implementation(libs.androidx.foundation.android)
+
+    // NEW: Splash Screen API 🚀 (Fixes your missing symbol error)
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)
@@ -91,7 +95,7 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // DataStore (Preferences) - NEW 💾
+    // DataStore (Preferences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // Gson

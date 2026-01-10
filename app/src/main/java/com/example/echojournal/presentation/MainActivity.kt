@@ -6,10 +6,12 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge // 1. Helps with full screen
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen // 2. Required for the theme switch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.echojournal.core.designsystem.EchoJournalTheme
@@ -25,7 +27,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // Inject SettingsRepository to read/write onboarding status
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
@@ -34,6 +35,14 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 🔥 FIX 1: This handles the Splash Screen transition
+        // It swaps 'Theme.App.SplashScreen' -> 'Theme.EchoJournal.NoActionBar'
+        installSplashScreen()
+
+        // 🔥 FIX 2: This forces the content to go behind the status/nav bars
+        // This removes black bars at the top/bottom
+        enableEdgeToEdge()
+
         super.onCreate(savedInstanceState)
 
         // Request Permission
@@ -45,20 +54,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EchoJournalTheme {
+                // Since we use the system splash screen now, we *could* remove this custom one,
+                // but if you want to keep your animation logic, it is fine to leave it.
                 var showSplash by remember { mutableStateOf(true) }
                 val navController = rememberNavController()
                 val scope = rememberCoroutineScope()
 
-                // Read Onboarding Status
-                // "collectAsState" converts the Flow from repository into a Boolean state
                 val onboardingCompleted by settingsRepository.isOnboardingCompleted.collectAsState(initial = false)
-
                 val historyViewModel: HistoryViewModel = hiltViewModel()
 
                 if (showSplash) {
                     SplashScreen(onNavigateNext = { showSplash = false })
                 } else {
-                    // Logic: If Onboarding NOT done -> Show Onboarding. Else -> Show App.
                     if (!onboardingCompleted) {
                         OnboardingScreen(
                             onFinish = {
